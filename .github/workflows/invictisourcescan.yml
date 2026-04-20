@@ -12,7 +12,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create output directory
-        run: mkdir -p output
+        run: |
+          mkdir -p output
+          chmod 777 output
 
       - name: Login to Invicti Registry
         run: |
@@ -33,7 +35,13 @@ jobs:
             -e LOG_LEVEL=debug \
             registry.invicti.com/invicti-platform/invicti-source-scan:latest
 
+      - name: List output files
+        if: always()
+        run: |
+          ls -lah output || true
+
       - name: Upload output artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: invicti-source-scan-output
