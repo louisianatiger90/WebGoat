@@ -1,48 +1,24 @@
 name: Invicti Source Scan
-
 on:
-  workflow_dispatch:
-
+  push:
+    branches: [main]
 jobs:
-  source-scan:
+  invicti-source-scan:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: Create output directory
-        run: |
-          mkdir -p output
-          chmod 777 output
-
-      - name: Login to Invicti Registry
-        run: |
-          echo "${{ secrets.INVICTI_REGISTRY_PASSWORD }}" | docker login registry.invicti.com \
-            -u "${{ secrets.INVICTI_REGISTRY_USERNAME }}" \
-            --password-stdin
-
-      - name: Pull Invicti Source Scan image
-        run: docker pull registry.invicti.com/invicti-platform/invicti-source-scan:latest
-
+      - uses: actions/checkout@v4
       - name: Run Invicti Source Scan
+        env:
+          INVICTI_API_TOKEN: ${{ secrets.INVICTI_API_TOKEN }}
         run: |
+          mkdir -p "${{ github.workspace }}/output"
+          chmod a+rwx "${{ github.workspace }}/output"
           docker run --rm \
             -v "${{ github.workspace }}":/code:ro \
             -v "${{ github.workspace }}/output":/output \
+            -e SCANNER_SERVICE_NAME="${{ github.event.repository.name }}" \
             -e INVICTI_SYNC=true \
-            -e INVICTI_JWT_TOKEN="${{ secrets.INVICTI_JWT_TOKEN }}" \
-            -e LOG_LEVEL=debug \
+            -e INVICTI_API_TOKEN \
+            -e INVICTI_NAD_CONFIG_ID="9b31a503-7d74-4e07-be8b-dd4479a24cd7" \
+            -e INVICTI_NAD_URL="https://platform.invicti.com/api/apihub/v1/nad" \
             registry.invicti.com/invicti-platform/invicti-source-scan:latest
-
-      - name: List output files
-        if: always()
-        run: |
-          ls -lah output || true
-
-      - name: Upload output artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: invicti-source-scan-output
-          path: output/
